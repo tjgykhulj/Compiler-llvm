@@ -1,0 +1,75 @@
+12/20
+删去ASTstatement.java
+修改ASTreturnstm.java
+修复MyLang.jjt （直接盖MyLang.java）
+	几乎所有操作全改为二叉，Equal限定为只能有两个孩子
+修改ASTvar_declaration\ASTprimtype，更新了char\bool的定义
+新增MyLangConstants中bool类型、0的定义。
+修改ASTAssignment.java：直接返回左值(不构建新的ASTContent)
+新增ASTContent里两个static函数调用。
+后面的忘了
+
+12/21
+更新jjt，可返回class\void
+修改ASTContent
+
+12/23
+修改JJT，合并additive与multive为ASTCommonExpression。
+修改ASTChar的问题。
+
+测试表达式、控制流、变量定义
+program
+define
+	a,b as int is 3.5;
+	c as float;
+	d as char;
+	e as bool;
+end define;
+begin
+	c = b = 3;
+	if not e then
+		return a+b+c+d;
+	else return 1;
+	end if;
+end;
+
+测试函数定义
+program
+define
+	a,b as float;
+	add(a as int)(b as float)
+		as function return float is
+	define
+		sum as float;
+	end define;
+		sum = a+b;
+		return sum * sum;
+	end function;
+end define;
+begin
+	a = b = 2.5;
+	return add(a,b);
+end;
+
+
+program
+type a is
+	b,c,d as int is 1,2,3;
+	sum(f as int) as function return int is
+		return f+b+c+d;
+	end function;
+end type;
+begin
+return a.sum(5);
+end;
+
+program
+define
+	a[] as char is "test";
+	get(i as int) as function return char is
+		a[i] = 48;
+	end function;
+end define;
+begin
+	get(3);
+end;

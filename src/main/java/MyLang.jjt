@@ -1,0 +1,472 @@
+options {
+  MULTI=true;
+  NODE_DEFAULT_VOID=true;
+}
+
+PARSER_BEGIN(MyLang)
+
+/** An Arithmetic Grammar. */
+public class MyLang {
+  /** Main entry point. */
+  public static void main(String args[]) {
+    System.out.println("Reading from standard input...");
+    MyLang t = new MyLang(System.in);
+    try {
+      ASTstart n = t.Start();
+      n.dump("");
+	  
+      System.out.println("Thank you.");
+    } catch (Exception e) {
+      System.out.println("Oops.");
+      System.out.println(e.getMessage());
+      e.printStackTrace();
+    }
+  }
+}
+PARSER_END(MyLang)
+
+SKIP :
+{
+  " "
+| "\t"
+| "\n"
+| "\r"
+| "\f"
+}
+
+TOKEN : /* KEY */
+{
+  /*< TRUE: "true" | "TRUE" >
+| < FALSE: "false" | "FALSE">
+|*/ < NULL: "null" >
+| < PROGRAM: "program" >
+| < BEGIN: "begin" >
+| < END: "end" >
+| < AS: "as" >
+| < DEFINE: "define" >
+| < ENDDEF: "end define" >
+| < INT: "int" >
+| < BOOL: "bool" >
+| < FLOAT: "float" >
+| < CHAR: "char" >
+| < EXP: "exp" >
+| < RETURN: "return" >
+| < SEMICOlON: ";">
+| < WHILE: "while" >
+| < DO: "do" >
+| < ENDWHILE: "end while" >
+| < FOR: "for" >
+| < TO: "to" >
+| < ENDFOR: "end for" >
+| < CONTINUE: "continue" >
+| < BREAK: "break" >
+| < FOREACH: "foreach" >
+| < ENDFORE: "end foreach" >
+| < IN: "in" >
+| < IF: "if" >
+| < THEN: "then" >
+| < ENDIF: "end if" >
+| < ELSE: "else" >
+| < FUNCTION: "function" >
+| < ENDFUNC: "end function" >
+| < IS: "is" >
+| < TYPE: "type" >
+| < ENDTYPE: "end type" >
+| < EXTEND: "extends" >
+| < NOT: "not" >
+| < THIS: "this" >
+| < AND: "and" >
+| < OR: "or" >
+| < VOID: "void" >
+}
+
+TOKEN: /* operator */
+{
+  < EQUAL: "=" >
+}
+
+TOKEN : /* LITERALS */
+{
+  < INTEGER_LITERAL: <DIGITS> (["l","L"])? >
+| < FLOAT_LITERAL: <DIGITS> "." <DIGITS> >
+| < BOOLEAN_LITERAL: "true"|"false" >
+| <	NULL_LITERAL: <NULL> >
+| < CHARACTER_LITERAL:
+      "'"
+      (   (~["'","\\","\n","\r"])
+        | ("\\"( ["n","\\","'","\""]))
+      )
+      "'"
+  >
+| < STRING_LITERAL:
+      "\""
+      (   (~["\"","\\","\n","\r"])
+        | ("\\"
+            ( ["n","t","b","r","f","\\","'","\""]
+            | ["0"-"7"] ( ["0"-"7"] )?
+            | ["0"-"3"] ["0"-"7"] ["0"-"7"]
+            )
+          )
+      )*
+      "\""
+  >
+}
+
+TOKEN : /* BASE */
+{
+  < IDENTIFIER: <LETTER> (<LETTER>|<DIGIT>)* >
+| < DIGITS: (<DIGIT>)+ >
+| < LETTER: ["_","a"-"z","A"-"Z"] >
+| < DIGIT: ["0"-"9"] >
+}
+
+
+/** Main production. */
+ASTstart Start() #start : {}
+{
+  procedure()
+ { return jjtThis; }
+}
+
+void procedure() #program : {}
+{
+  < PROGRAM >
+  ( class_declaration() |
+  declaration())*
+  < BEGIN >
+  block()
+  < END >
+  ";"
+}
+
+void block() #block : {}
+{
+  (statement())*
+}
+
+void statement() : {}
+{
+  return_statement() | common_statement() | while_statement() | for_statement() | continue_statement()
+| break_statement() | foreach_statement() | ifthen_statement()
+}
+
+void ifthen_statement() #ifthenstm : {}
+{
+  < IF >
+  expression()
+  < THEN >
+  block()
+  [
+   LOOKAHEAD(1)
+   < ELSE >
+   block()
+  ]
+  < ENDIF >
+  ";"
+}
+
+void foreach_statement() #foreachstm : {}
+{
+  < FOREACH >
+  Identifier()
+  < IN >
+  expression()
+  < DO >
+  block()
+  < ENDFORE >
+  ";"
+}
+
+void continue_statement() #continuestm :	{}
+{
+  < CONTINUE > ";"
+}
+
+void break_statement() #breakstm : {}
+{
+  < BREAK > ";"
+}
+
+void for_statement() #forstm : {}
+{
+  < FOR >
+  Identifier()
+  < EQUAL >
+  expression()
+  < TO >
+  expression()
+  < DO >
+  block()
+  < ENDFOR >
+  ";"
+}
+
+void while_statement() #whilestm : {}
+{
+  < WHILE >
+  expression()
+  < DO >
+  block()
+  < ENDWHILE >
+  ";"
+}
+
+void return_statement() #returnstm : {}
+{
+  < RETURN > expression() ";"
+}
+
+void common_statement() #commonstm : {}
+{
+  [expression()] ";"
+}
+
+void class_declaration() #class_declaration : {}
+{
+  < TYPE >
+  Identifier()
+  [ <EXTEND > Identifier()]
+  < IS >
+ (( LOOKAHEAD(3)
+    function_declaration() |
+    variable_declaration())*
+  )
+  < ENDTYPE >
+  ";"
+}
+
+void declaration() #declaration : {}
+{
+   	< DEFINE >
+  (( LOOKAHEAD(3)
+    function_declaration() |
+    variable_declaration()))*
+  < ENDDEF >
+  ";"
+}
+
+void function_declaration() #func_declaration : {}
+{
+  Identifier()
+  ( "(" [declaration_kind() ("," declaration_kind() )* < AS > Type()] ")")*
+  < AS > < FUNCTION > < RETURN > Type()    [ < IS > [ < DEFINE > (LOOKAHEAD(3) variable_declaration()|function_declaration())* < ENDDEF > ";" ]
+  	block() <ENDFUNC> ]
+  ";"
+}
+
+void variable_declaration() #var_declaration : {}
+{
+  declaration_kind() ("," declaration_kind())* < AS > Type()
+  [< IS > ExpressionList()]
+  ";"
+}
+
+void declaration_kind()  : {}
+{
+  	LOOKAHEAD(3) arraydeclaration_num() | LOOKAHEAD(2) arraydeclaration_nonum() |   Identifier()
+//	Identifier() [ "[" [ <INTEGER_LITERAL> ] "]" ]
+}
+
+void arraydeclaration_num() #array: {}
+{
+  Identifier() "[" expression() "]"
+}
+
+void arraydeclaration_nonum() #array: {}
+{
+  Identifier() "[" "]"
+}
+
+void Type()  :
+{}
+{
+  PrimitiveType() ( "[" "]" )*
+| Identifier()
+#Type
+}
+
+void PrimitiveType() #primtype:
+{Token t;}
+{
+  (t = "bool"
+|t = "char"
+|t = "int"
+|t = "float"
+|t = "void")
+{
+  jjtn000.jjtSetValue(t.image);
+}
+}
+
+/** An Expression. */
+void expression() : {}
+{
+  (    "[" ExpressionList() "]"
+  ) #ArrayConstructor
+  |    (LogicalAndExpression() ["=" expression()] )
+  #Assignment(>1)
+}
+
+void LogicalOrExpression() : {}
+{
+  (LogicalAndExpression() [ <OR> LogicalOrExpression() ] )
+  #LogicalOrExpression(>1)
+}
+void LogicalAndExpression() : {}
+{
+  (EqualityExpression() [ <AND> LogicalAndExpression() ] )
+  #LogicalAndExpression(>1)
+}
+void EqualityExpression() : {Token t; }
+{
+  (RelationalExpression()
+  	[ ( t="==" | t="!=" )
+  {
+    jjtn001.jjtSetValue(t.image);
+  }
+  EqualityExpression() ] )
+  #EqualityExpression(>1)
+}
+void RelationalExpression() : {Token t;}
+{
+  (ShiftExpression() [ LOOKAHEAD(2) ( t="<" | t= ">" | t="<=" | t=">=" )
+  {
+    jjtn001.jjtSetValue(t.image);
+  }
+   ShiftExpression() ])
+  #RelationalExpression(>1)
+}
+void ShiftExpression() : {Token t;}
+{
+  (AdditiveExpression() [ LOOKAHEAD(2) ( t=">>" | t="<<" )
+  {
+    jjtn001.jjtSetValue(t.image);
+  } AdditiveExpression() ])
+  #ShiftExpression(>1)
+}
+
+/** An Additive Expression. */
+void AdditiveExpression() : {Token t;}
+{
+	(MultiplicativeExpression()
+		(		  (t = "+" | t="-") 
+		{
+		  jjtn001.jjtSetValue(t.image);
+		} #Opt
+	 	MultiplicativeExpression())* )
+	#CommonExpression(>1)
+}
+/** A Multiplicative Expression. */
+void MultiplicativeExpression() : {Token t; }
+{
+	(UnaryExpression()
+		(		   (t = "*" | t = "/" | t = "%")
+		{
+		  jjtn001.jjtSetValue(t.image);
+		} #Opt
+		 UnaryExpression())* )
+	#CommonExpression(>1)
+}
+
+/** A Unary Expression. */
+void UnaryExpression() : {Token t;}
+{
+	  (
+	    (t= "+" | t="-" | t=<NOT>)
+	{
+	  jjtn001.jjtSetValue(t.image);
+	}
+	UnaryExpression()
+	)
+	#UnaryExpression
+|	Primary()
+}
+
+void Primary() : {}
+{
+  Literal()
+| "(" expression() ")"
+| (PrimaryPrefix() (PrimaryAccess())*) #PrimaryPrefixAccess(>1)
+}
+void PrimaryPrefix() :
+{}
+{
+  Identifier()
+| "[" ExpressionList() "]"
+}
+void PrimaryAccess() :{Token t;}
+{
+  (  t = "["
+  {
+    jjtn001.jjtSetValue(t.image);
+  }
+  #PrimaryAccess expression() "]"
+|
+  t = "."
+  {
+    jjtn002.jjtSetValue(t.image);
+  }
+  #PrimaryAccess Identifier()
+|
+  t = "(" 
+  {
+    jjtn003.jjtSetValue(t.image);
+  }
+  #PrimaryAccess [ExpressionList()] ")")
+}
+
+void Name() : {}
+{
+  Identifier() ( "." Identifier() )*
+}
+void ExpressionList() : {}
+{
+  expression() ( "," expression() )*
+}
+
+
+/**********************************************************Tokens************************************************************************/
+
+/** An Identifier. */
+void Identifier() #Identifier :
+{
+  Token t;
+}
+{
+  t=<IDENTIFIER>
+  {
+    jjtThis.jjtSetValue(t.image);
+  }
+}
+
+
+void Literal() :
+{
+  Token t;
+}
+{
+  t = <INTEGER_LITERAL> #Integer
+  {
+    jjtn001.jjtSetValue(t.image);
+  }
+| t = <FLOAT_LITERAL> #Float
+  {
+    jjtn002.jjtSetValue(t.image);
+  }
+| t = <CHARACTER_LITERAL> #Char
+  {
+    jjtn003.jjtSetValue(t.image);
+  }
+| t = <BOOLEAN_LITERAL> #Boolean
+  {
+    jjtn004.jjtSetValue(t.image);
+  }
+| t = <NULL_LITERAL> #Null
+  {
+    jjtn005.jjtSetValue(t.image);
+  }
+| t = <STRING_LITERAL> #String
+  {
+    jjtn006.jjtSetValue(t.image);
+  }
+}
