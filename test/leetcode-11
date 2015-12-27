@@ -1,0 +1,22 @@
+program
+define
+	n as int is 5;
+	h[] as int is [1,9,3,4,7];
+	l, r, ans as int;
+
+	min(a,b as int) as function return int is
+		if a<b then return a;	else return b; end if;
+	end function;
+	max(a,b as int) as function return int is
+		if a>b then return a;	else return b; end if;
+	end function;
+end define;
+
+begin
+	r = n-1; l = ans = 0;
+	while l<r do
+		ans = max(ans, ((r-l)*min(h[l],h[r])));
+		if h[l]<h[r] then l = l+1; else r = r-1; end if;
+	end while;
+	outputD(ans);
+end;

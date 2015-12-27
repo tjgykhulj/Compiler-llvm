@@ -1,0 +1,17 @@
+program
+define
+	x, ans as int is 18, 0;
+	t as int is x;
+end define;
+
+begin
+	if x<0 then
+		outputD(false);
+	else
+		while x>0 do
+			ans = ans*10 + x%10;
+			x = x / 10;
+		end while;
+		outputD(ans == t);
+	end if;
+end;
